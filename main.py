@@ -22,11 +22,15 @@ def draw(canvas):
     row, column = (10, 30)
     canvas.border()
     curses.curs_set(False)
-    coroutine = blink(canvas, row, column, symbol='*')
+    coroutines = []
+    for column_position in range(column, column + 25, 5):
+        coroutine = blink(canvas, row, column_position, symbol='*')
+        coroutines.append(coroutine)
     while True:
-        coroutine.send(None)
+        for coroutine in coroutines:
+            coroutine.send(None)
         canvas.refresh()
-        time.sleep(1)
+        time.sleep(0.1)
 
 
 if __name__ == '__main__':
