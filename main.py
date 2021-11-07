@@ -1,11 +1,10 @@
-import time
 import curses
-import asyncio
+import time
 import random
 
-from itertools import cycle
 from fire_animation import fire
-from curses_tools import draw_frame, read_controls
+from rocket_animation import animate_spaceship
+from star_animation import blink
 
 TIC_TIMEOUT = 0.1
 
@@ -16,41 +15,6 @@ def get_rocket_frames():
     with open("frames/rocket_frame_2.txt", "r") as frame_2:
         rocket_frame_2 = frame_2.read()
     return rocket_frame_1, rocket_frame_2
-
-
-async def blink(canvas, row, column, symbol='*'):
-    while True:
-        canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(random.randint(1, 20)):
-            await asyncio.sleep(0)
-
-        canvas.addstr(row, column, symbol)
-        for _ in range(random.randint(1, 3)):
-            await asyncio.sleep(0)
-
-        canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(random.randint(1, 5)):
-            await asyncio.sleep(0)
-
-        canvas.addstr(row, column, symbol)
-        for _ in range(random.randint(1, 3)):
-            await asyncio.sleep(0)
-
-
-async def animate_spaceship(canvas, row, column, frames):
-
-    for frame in cycle(frames):
-        canvas.nodelay(True)
-        draw_frame(canvas, row, column, frame)
-        canvas.refresh()
-        await asyncio.sleep(0)
-
-        draw_frame(canvas, row, column, frame, negative=True)
-        await asyncio.sleep(0)
-        rows_direction, columns_direction, space_pressed = read_controls(canvas)
-        row += rows_direction
-        column += columns_direction
-        canvas.border()
 
 
 def draw_items(coroutines, canvas, timer):
