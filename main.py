@@ -3,37 +3,19 @@ import curses
 import asyncio
 import random
 
+from itertools import cycle
+from fire_animation import fire
+from curses_tools import draw_frame
+
 TIC_TIMEOUT = 0.1
 
 
-async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
-    """Display animation of gun shot, direction and speed can be specified."""
-
-    row, column = start_row, start_column
-
-    canvas.addstr(round(row), round(column), '*')
-    await asyncio.sleep(0)
-
-    canvas.addstr(round(row), round(column), 'O')
-    await asyncio.sleep(0)
-    canvas.addstr(round(row), round(column), ' ')
-
-    row += rows_speed
-    column += columns_speed
-
-    symbol = '-' if columns_speed else '|'
-
-    rows, columns = canvas.getmaxyx()
-    max_row, max_column = rows - 1, columns - 1
-
-    curses.beep()
-
-    while 0 < row < max_row and 0 < column < max_column:
-        canvas.addstr(round(row), round(column), symbol)
-        await asyncio.sleep(0)
-        canvas.addstr(round(row), round(column), ' ')
-        row += rows_speed
-        column += columns_speed
+def get_rocket_frames():
+    with open("frames/rocket_frame_1.txt", "r") as frame_1:
+        rocket_frame_1 = frame_1.read()
+    with open("frames/rocket_frame_2.txt", "r") as frame_2:
+        rocket_frame_2 = frame_2.read()
+    return rocket_frame_1, rocket_frame_2
 
 
 async def blink(canvas, row, column, symbol='*'):
@@ -55,14 +37,39 @@ async def blink(canvas, row, column, symbol='*'):
             await asyncio.sleep(0)
 
 
+async def animate_spaceship(canvas, row, column, frames):
+
+    for frame in cycle(frames):
+
+        draw_frame(canvas, row, column, frame)
+        canvas.refresh()
+        await asyncio.sleep(0)
+
+        draw_frame(canvas, row, column, frame, negative=True)
+        await asyncio.sleep(0)
+
+
+def draw_items(coroutines, canvas, timer):
+    try:
+        for coroutine in coroutines.copy():
+            coroutine.send(None)
+            curses.curs_set(False)
+        canvas.refresh()
+        time.sleep(timer)
+    except StopIteration:
+        coroutines.remove(coroutine)
+
+
 def draw(canvas):
     rows_count, columns_count = curses.window.getmaxyx(canvas)
-    stars_count = int(rows_count * columns_count / 30)
+    stars_count = int(rows_count * columns_count / 1000)
+    frames = get_rocket_frames()
     canvas.border()
     curses.curs_set(False)
     blink_coroutines = []
-    fire_coroutine = fire(canvas, random.randint(1, rows_count-2), random.randint(1, columns_count-2))
-    blink_coroutines.append(fire_coroutine)
+    fire_coroutines = [fire(canvas, int(rows_count / 2), int(columns_count / 2) + 2)]
+    rocket_coroutines = [animate_spaceship(canvas, int(rows_count / 2), int(columns_count / 2), frames)]
+
     for _ in range(stars_count):
         row = random.randint(1, rows_count-2)
         column = random.randint(1, columns_count-2)
@@ -70,14 +77,9 @@ def draw(canvas):
         blink_coroutine = blink(canvas, row, column, symbol)
         blink_coroutines.append(blink_coroutine)
     while True:
-        try:
-            for coroutine in blink_coroutines:
-                coroutine.send(None)
-        except StopIteration:
-            blink_coroutines.remove(coroutine)
-            canvas.border()
-        canvas.refresh()
-        time.sleep(TIC_TIMEOUT)
+        draw_items(blink_coroutines, canvas, TIC_TIMEOUT)
+        draw_items(fire_coroutines, canvas, timer=0)
+        draw_items(rocket_coroutines, canvas, timer=0)
 
 
 if __name__ == '__main__':
