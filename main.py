@@ -5,7 +5,7 @@ import random
 
 from itertools import cycle
 from fire_animation import fire
-from curses_tools import draw_frame
+from curses_tools import draw_frame, read_controls
 
 TIC_TIMEOUT = 0.1
 
@@ -40,35 +40,41 @@ async def blink(canvas, row, column, symbol='*'):
 async def animate_spaceship(canvas, row, column, frames):
 
     for frame in cycle(frames):
-
+        canvas.nodelay(True)
         draw_frame(canvas, row, column, frame)
         canvas.refresh()
         await asyncio.sleep(0)
 
         draw_frame(canvas, row, column, frame, negative=True)
         await asyncio.sleep(0)
+        rows_direction, columns_direction, space_pressed = read_controls(canvas)
+        row += rows_direction
+        column += columns_direction
+        canvas.border()
 
 
 def draw_items(coroutines, canvas, timer):
     try:
         for coroutine in coroutines.copy():
             coroutine.send(None)
-            curses.curs_set(False)
-        canvas.refresh()
         time.sleep(timer)
     except StopIteration:
         coroutines.remove(coroutine)
+        canvas.border()
 
 
 def draw(canvas):
     rows_count, columns_count = curses.window.getmaxyx(canvas)
-    stars_count = int(rows_count * columns_count / 1000)
+    stars_count = int(rows_count * columns_count / 50)
     frames = get_rocket_frames()
-    canvas.border()
     curses.curs_set(False)
+    canvas.border()
+    rocket_coroutines = [animate_spaceship(canvas,
+                                           int(rows_count / 2),
+                                           int(columns_count / 2),
+                                           frames)]
     blink_coroutines = []
     fire_coroutines = [fire(canvas, int(rows_count / 2), int(columns_count / 2) + 2)]
-    rocket_coroutines = [animate_spaceship(canvas, int(rows_count / 2), int(columns_count / 2), frames)]
 
     for _ in range(stars_count):
         row = random.randint(1, rows_count-2)
@@ -77,9 +83,9 @@ def draw(canvas):
         blink_coroutine = blink(canvas, row, column, symbol)
         blink_coroutines.append(blink_coroutine)
     while True:
+        draw_items(rocket_coroutines, canvas, timer=0)
         draw_items(blink_coroutines, canvas, TIC_TIMEOUT)
         draw_items(fire_coroutines, canvas, timer=0)
-        draw_items(rocket_coroutines, canvas, timer=0)
 
 
 if __name__ == '__main__':
