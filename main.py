@@ -32,7 +32,7 @@ def draw(canvas):
     stars_count = int(rows_count * columns_count / 50)
     frames = get_rocket_frames()
     curses.curs_set(False)
-    canvas.border()
+
     rocket_coroutines = [animate_spaceship(canvas,
                                            int(rows_count / 2),
                                            int(columns_count / 2),
@@ -47,9 +47,12 @@ def draw(canvas):
         blink_coroutine = blink(canvas, row, column, symbol)
         blink_coroutines.append(blink_coroutine)
     while True:
-        draw_items(rocket_coroutines, canvas, timer=0)
         draw_items(blink_coroutines, canvas, TIC_TIMEOUT)
+        draw_items(rocket_coroutines, canvas, timer=0)
         draw_items(fire_coroutines, canvas, timer=0)
+        canvas.nodelay(True)
+        canvas.border()
+        canvas.refresh()
 
 
 if __name__ == '__main__':
